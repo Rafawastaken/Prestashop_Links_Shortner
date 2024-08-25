@@ -7,6 +7,9 @@ class R_LinkShortnerClassModel extends ObjectModel
     public $campaignSource;
     public $campaignMedium;
     public $campaignName;
+    public $randomId;
+    public $views;
+    public $finalLink;
 
     public static $definition = [
         'table' => 'r_linkshortner',
@@ -43,6 +46,25 @@ class R_LinkShortnerClassModel extends ObjectModel
                 'required' => false,
                 'size' => 255,
             ],
+            'randomId' => [
+                'type' => self::TYPE_STRING,
+                'validate' => 'isCleanHtml',
+                'required' => false,
+                'size' => 6,
+            ],
+            'views' => [
+                'type' => self::TYPE_STRING,
+                'validate' => 'isCleanHtml',
+                'required' => false,
+                'size' => 6,
+                'default' => 0
+            ],
+            'finalLink' => [
+                'type' => self::TYPE_STRING,
+                'validate' => 'isCleanHtml',
+                'required' => false,
+                'size' => 255,
+            ],
         ],
     ];
 
@@ -59,6 +81,9 @@ class R_LinkShortnerClassModel extends ObjectModel
             `campaignSource` varchar(255),
             `campaignMedium` varchar(255),
             `campaignName` varchar(255),
+            `randomId` varchar(10),
+            `views` int(100) DEFAULT 0,
+            `finalLink` varchar(255),
             PRIMARY KEY (`id`)
         ) ENGINE=" . _MYSQL_ENGINE_ . " DEFAULT CHARSET=utf8;";
 
@@ -74,14 +99,26 @@ class R_LinkShortnerClassModel extends ObjectModel
         return Db::getInstance()->execute("DROP TABLE IF EXISTS `" . _DB_PREFIX_ . "r_linkshortner`");
     }
 
-    // /**
-    //  * Query data
-    //  * @return mixed false if no data, array with data
-    //  */
-    // public static function getData()
-    // {
-    //     return Db::getInstance()->executeS("SELECT * FROM `" . _DB_PREFIX_ . "r_linkshortner`");
-    // }
+    /**
+     * Check if there's link already created
+     * @return bool true if created false if not
+     */
+    public static function exists()
+    {
+        $table = _DB_PREFIX_ . "r_linkshortner";
+        $sql = "SELECT id FROM `$table` LIMIT 1";
+        return False;
+    }
+
+
+    /**
+     * Query data
+     * @return mixed false if no data, array with data
+     */
+    public static function getAllLinks()
+    {
+        return Db::getInstance()->executeS("SELECT * FROM `" . _DB_PREFIX_ . "r_linkshortner`");
+    }
 
     // /**
     //  * Delete entry

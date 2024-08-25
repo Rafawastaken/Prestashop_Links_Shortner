@@ -1,5 +1,32 @@
 <?php
 
+/**
+ * 2007-2019 PrestaShop and Contributors
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Open Software License (OSL 3.0)
+ * that is bundled with this package in the file LICENSE.txt.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/OSL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * DISCLAIMER
+ *
+ * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
+ * versions in the future. If you wish to customize PrestaShop for your
+ * needs please refer to https://www.prestashop.com for more information.
+ *
+ * @author    PrestaShop SA <contact@prestashop.com>
+ * @copyright 2007-2019 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * International Registered Trademark & Property of PrestaShop SA
+ */
+
+
+
 if (!defined('_PS_VERSION_')) {
     exit;
 }
@@ -33,7 +60,6 @@ class R_LinkShortner extends Module
         return parent::uninstall() && R_LinkShortnerClassModel::deleteTable();
     }
 
-
     public function getContent()
     {
         $output = "";
@@ -41,16 +67,36 @@ class R_LinkShortner extends Module
         if (Tools::isSubmit('submitLink')) {
             $errors = $this->postValidation();
 
-            if (!empty($erros)) {
-                $output = $this->renderErrors($erros);
+            if (!empty($errors)) {
+                $output = $this->renderErrors($errors);
             } else {
                 $output = $this->postProcess();
             }
         }
 
-        return $output . $this->renderForm();
-    }
+        // Assign data to the Smarty template
+        $this->context->smarty->assign([
+            'links' => R_LinkShortnerClassModel::getAllLinks(),
+            'translations' => [
+                'created_links' => $this->trans('Created Links', [], 'Modules.R_LinkShortner.Admin'),
+                'id' => $this->trans('ID', [], 'Modules.R_LinkShortner.Admin'),
+                'target' => $this->trans('Target', [], 'Modules.R_LinkShortner.Admin'),
+                'campaign_id' => $this->trans('Campaign ID', [], 'Modules.R_LinkShortner.Admin'),
+                'campaign_source' => $this->trans('Campaign Source', [], 'Modules.R_LinkShortner.Admin'),
+                'campaign_medium' => $this->trans('Campaign Medium', [], 'Modules.R_LinkShortner.Admin'),
+                'campaign_name' => $this->trans('Campaign Name', [], 'Modules.R_LinkShortner.Admin'),
+                'randomId' => $this->trans('Random Id', [], 'Modules.R_LinkShortner.Admin'),
+                'finalLink' => $this->trans('Final Link', [], 'Modules.R_LinkShortner.Admin'),
+                'views' => $this->trans('Views', [], 'Modules.R_LinkShortner.Admin')
+            ],
+        ]);
 
+        // Render the form and the links list template
+        $output .= $this->renderForm();
+        $output .= $this->context->smarty->fetch($this->local_path . 'views/templates/admin/links_list.tpl');
+
+        return $output;
+    }
 
     protected function renderForm()
     {
@@ -150,17 +196,76 @@ class R_LinkShortner extends Module
     }
 
 
-    protected function postProcess() {}
 
+    protected function postProcess()
+    {
+        $t = $this->getTranslator();
+        $ctx = Context::getContext();
+
+        if (Tools::isSubmit("submitLink")) {
+            $errors = [];
+            $link = new R_LinkShortnerClassModel();
+
+            $link->target = Tools::getValue("target");
+            $link->campaignId = Tools::getValue("campaignId");
+            $link->campaignSource = Tools::getValue("campaignSource");
+            $link->campaignMedium = Tools::getValue("campaignMedium");
+            $link->campaignName = Tools::getValue("campaignName");
+            $link->randomId = $this->generateRandomString();
+            $link->views = 0;
+            $shopUrl =  $ctx->shop->getBaseURL();
+            $link->finalLink = $shopUrl . "link/" . $link->randomId;
+
+            if (empty($errors)) {
+                if (!$link->add()) {
+                    $errors[] = $this->displayError(
+                        $t->trans("The link could not be added.", [], "Modules.R_LinkShortner.Admin")
+                    );
+                }
+            }
+
+            if (count($errors)) {
+                return $this->displayError(implode("<br/>", $errors));
+            } else {
+                Tools::redirectAdmin(
+                    $ctx->link->getAdminLink('AdminModules', true) .
+                        '&conf=3&configure=' . $this->name .
+                        '&tab_module=' . $this->tab .
+                        '&module_name=' . $this->name
+                );
+            }
+        }
+    }
 
     protected function postValidation()
     {
-        $errors = array();
-        return $erros;
+        $t = $this->getTranslator();
+        $errors = [];
+
+        $target = Tools::getValue("target");
+        if (Tools::strlen($target) > 255 || !Validate::isUrl($target)) {
+            $errors[] = $t->trans("Target Links is not a valid URL", [], "Modules.R_LinkShortner.Admin");
+        }
+
+        return $errors;
     }
 
     protected function renderErrors($errors)
     {
-        return (!empty($erros)) ? $this->displayError(implode("<br/>", $erros)) : '';
+        return (!empty($errors)) ? $this->displayError(implode("<br/>", $errors)) : '';
+    }
+
+    /**
+     * Helper function to generate random string
+     * @return string random string id to identify link
+     */
+    protected function generateRandomString()
+    {
+        $characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $randomString = '';
+        for ($i = 0; $i < 6; $i++) {
+            $randomString .= $characters[rand(0, strlen($characters) - 1)];
+        }
+        return $randomString;
     }
 }
